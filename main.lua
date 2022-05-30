@@ -72,7 +72,6 @@ local Listeners = {
     ["MESSAGE_CREATE"] = {
         Name = "Message",
         Callback = function(Data, Callback)
-            local Data = ConvertToPascal(Data)
             Callback(Classes.Message(Data))
         end
     }
