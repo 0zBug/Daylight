@@ -93,6 +93,10 @@ local Listeners = {
     ["INTERACTION_CREATE"] = {
         Name = "Interaction",
         Callback = function(Data, Callback)
+            Endpoint("POST", string.format("/interactions/%s/%s/callback", Data.id, Data.token), {
+                type = 4
+            })
+
             Callback(Classes.Interaction(Data))
         end
     }
@@ -104,7 +108,7 @@ function Client:Start(Token)
 
     Socket.OnMessage:Connect(function(Message)
         local Payload = HttpService:JSONDecode(Message)
-        
+
         coroutine.resume(coroutine.create(function()
             if Payload.op == 0 then
                 local Listener = Listeners[Payload.t]
