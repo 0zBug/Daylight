@@ -16,7 +16,7 @@ local function Endpoint(Method, Path, Data)
     } or {
         Method = Method,
         Url = "https://discord.com/api/v8" .. Path,
-        Body = HttpService:JSONEncode(Data),
+        Body = Data and HttpService:JSONEncode(Data) or nil,
         Headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Bot " .. Client.token
@@ -40,12 +40,11 @@ Classes = {
             return Classes.Channel(Endpoint("GET", "/channels/" .. Channel))
         end
 
-        function Channel:Send(Message, Embed, TTS)
-            return Classes.Message(Endpoint("POST", "/channels/" .. self.id .. "/messages", {
-                content = Message,
-                tts = TTS,
-                embed = Embed
-            }))
+        function Channel:Send(Message, Options)
+            local Data = Options or {}
+            Data.content = Message
+            
+            return Classes.Message(Endpoint("POST", "/channels/" .. self.id .. "/messages", Data))
         end
     
         return Channel
@@ -55,12 +54,28 @@ Classes = {
             local message = Endpoint("GET", "/channels/" .. Message.channel .. "/messages/" .. Message.message)
             return Classes.Message(message, Channel)
         end
-    
-        Message.id = Message.guild_id
-        Message.channel = Channel or Classes.Channel(Message.channel_id)
+
+        Message.channel = Channel or Message.channel_id and Classes.Channel(Message.channel_id)
         Message.author = Classes.User(Message.author)
 
+        function Message:Delete()
+            return Endpoint("DELETE", "/channels/" .. Message.channel_id .. "/messages/" .. Message.id)
+        end
+
+        function Message:Edit(Text, Options)
+            local Data = Options or {}
+            Data.content = Text
+            
+            return Classes.Message(Endpoint("PATCH", "/channels/" .. Message.channel_id .. "/messages/" .. Message.id, Data))
+        end
+
         return Message
+    end,
+    ["Interaction"] = function(Interaction, Channel)
+        Interaction.message = Interaction.message and Classes.Message(Interaction.message)
+        Interaction.channel = Channel or Classes.Channel(Interaction.channel_id)
+
+        return Interaction
     end
 }
 
@@ -73,6 +88,12 @@ local Listeners = {
         Name = "Message",
         Callback = function(Data, Callback)
             Callback(Classes.Message(Data))
+        end
+    },
+    ["INTERACTION_CREATE"] = {
+        Name = "Interaction",
+        Callback = function(Data, Callback)
+            Callback(Classes.Interaction(Data))
         end
     }
 }
